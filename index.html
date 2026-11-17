@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<title>We Only Fly Together</title>
+<style>
+  :root{--bg:#05070d;--glow:#9be564;--text:#d8e6f2}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:Georgia,"Times New Roman",serif;overflow:hidden;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  #sky{position:fixed;inset:0;width:100%;height:100%;display:block}
+  body{background:linear-gradient(180deg,#04060c 0%,#070c18 55%,#0b1424 100%) fixed}
+
+  /* screens: default = waiting on the right, .show = visible, .gone = left */
+  .ui{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:env(safe-area-inset-top,0px) 24px env(safe-area-inset-bottom,0px);text-align:center;
+    opacity:0;transform:translateX(9vw);pointer-events:none;
+    transition:opacity 1.6s ease,transform 2.2s cubic-bezier(.2,.7,.2,1)}
+  .ui.show{opacity:1;transform:none;pointer-events:auto}
+  .ui.gone{opacity:0;transform:translateX(-9vw);pointer-events:none}
+  h1{font-size:1.5rem;font-weight:normal;letter-spacing:.04em;margin:0 0 .6rem}
+  p{margin:.4rem 0;line-height:1.6;opacity:.85}
+  button{margin-top:1.6rem;padding:.9rem 2rem;font:inherit;font-size:1.05rem;color:var(--text);
+    background:rgba(155,229,100,.08);border:1px solid rgba(155,229,100,.55);border-radius:999px;
+    box-shadow:0 0 22px rgba(155,229,100,.25);cursor:pointer}
+
+  /* Toothless */
+  #toothless{position:fixed;left:0;top:0;width:min(86vw,380px);opacity:0;pointer-events:none;z-index:5;
+    filter:drop-shadow(0 0 14px rgba(155,229,100,.3))}
+  #toothless img{width:100%;display:block;-webkit-user-drag:none;animation:bob 1.6s ease-in-out infinite alternate}
+  @keyframes bob{from{transform:translateY(-6px) rotate(-1.5deg)}to{transform:translateY(6px) rotate(1.5deg)}}
+
+  /* intro lines */
+  #introLines{max-width:30rem}
+  #introLines p{font-size:1.2rem;font-style:italic;margin:1.1rem 0;opacity:0;animation:fi 2.2s ease forwards}
+  @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:.95;transform:none}}
+
+  #welcome h1,#finale h1{font-size:clamp(1.8rem,8vw,2.6rem);font-weight:normal;letter-spacing:.04em;line-height:1.3;
+    text-shadow:0 0 26px rgba(155,229,100,.45);margin:0}
+  #welcome.show h1,#finale.show h1{animation:fi 2.6s ease both}
+
+  /* constellation page */
+  #stars{display:block;padding:0}
+  #field{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 7%);bottom:5%}
+  #lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .ln{stroke:rgba(155,229,100,.7);stroke-width:1.4;vector-effect:non-scaling-stroke;opacity:0;transition:opacity 2.4s ease;
+    filter:drop-shadow(0 0 4px rgba(155,229,100,.8))}
+  .ln.on{opacity:.8}
+  .star{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;padding:0;border:0;background:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text);
+    font:inherit;cursor:pointer;opacity:.3;transition:opacity 1.4s ease,transform .6s ease;box-shadow:none;border-radius:0}
+  .star svg{width:34px;height:34px;fill:#eaffd0;filter:drop-shadow(0 0 6px rgba(155,229,100,.9))}
+  .star b{font-weight:normal;font-size:.8rem;letter-spacing:.06em;margin-top:2px;opacity:.9}
+  .star.big{transform:scale(1.35)}
+  .star.lit{opacity:1}
+  .star.next{opacity:1;animation:pulse 1.8s ease-in-out infinite}
+  .star.next svg{filter:drop-shadow(0 0 14px rgba(155,229,100,1))}
+  .star.shake{animation:shake .4s}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
+  .star.big.next{animation:pulseBig 1.8s ease-in-out infinite}
+  @keyframes pulseBig{0%,100%{transform:scale(1.35)}50%{transform:scale(1.6)}}
+  @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  #starHint{position:absolute;left:0;right:0;bottom:2%;text-align:center;font-size:.85rem;opacity:.55;transition:opacity 1s}
+
+  #card{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:18px;
+    background:rgba(3,5,10,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    opacity:0;pointer-events:none;transition:opacity .8s ease}
+  #card.open{opacity:1;pointer-events:auto}
+  #panel{width:min(94vw,430px);max-height:90vh;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;
+    padding:18px 18px 22px;border-radius:22px;background:rgba(10,16,28,.9);
+    border:1px solid rgba(155,229,100,.35);box-shadow:0 0 40px rgba(155,229,100,.18);
+    transform:translateY(14px) scale(.97);transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+  #card.open #panel{transform:none}
+  #photoBox{width:100%;min-height:110px;border-radius:16px;overflow:hidden;background:#0a1220;
+    border:1px solid rgba(155,229,100,.25);display:flex;align-items:center;justify-content:center;
+    font-size:.8rem;opacity:.95;text-align:center;padding:8px}
+  #photoBox img{max-width:100%;max-height:62vh;width:auto;height:auto;object-fit:contain;display:block}
+  #cYear{font-size:1.7rem;letter-spacing:.08em;margin:14px 0 0;text-align:center;text-shadow:0 0 18px rgba(155,229,100,.5)}
+  #cLabel{text-align:center;font-size:.95rem;opacity:.75;margin:2px 0 10px}
+  #cText{direction:rtl;text-align:start;white-space:pre-line;font-size:1.05rem;line-height:1.95;margin:0;opacity:.95;
+    font-family:"Geeza Pro","Noto Naskh Arabic","Segoe UI",Tahoma,system-ui,sans-serif}
+  #closeBtn{display:block;margin:16px auto 0;padding:.6rem 1.6rem;font-size:.95rem}
+
+  #msgLines{width:min(92vw,430px);max-height:88vh;overflow-y:auto;touch-action:pan-y;direction:rtl;
+    font-family:"Geeza Pro","Noto Naskh Arabic","Segoe UI",Tahoma,system-ui,sans-serif}
+  #msgLines p{font-size:1.08rem;line-height:1.95;margin:.8rem 0;text-align:center;font-style:normal;
+    opacity:0;animation:fi 2.4s ease forwards}
+
+  /* first page: greeting + answer box */
+  #greet,#helloMsg,#thanksText,#hello{font-family:"Geeza Pro","Noto Naskh Arabic","Segoe UI",Tahoma,system-ui,sans-serif}
+  #greet{font-size:1.6rem;margin:.6rem 0 0;opacity:1;text-shadow:0 0 20px rgba(155,229,100,.45)}
+  #hello{width:min(80vw,320px);margin-top:1.1rem;padding:.8rem 1rem;font-size:18px;color:var(--text);
+    background:rgba(155,229,100,.06);border:1px solid rgba(155,229,100,.45);border-radius:14px;
+    text-align:center;outline:none;-webkit-user-select:text;user-select:text;touch-action:manipulation;
+    box-shadow:0 0 18px rgba(155,229,100,.15);transition:border-color .3s,box-shadow .3s}
+  #hello:focus{border-color:rgba(155,229,100,.95);box-shadow:0 0 24px rgba(155,229,100,.35)}
+  #hello.shake{animation:shake .4s}
+  #helloMsg{min-height:2.2em;margin:.9rem 0 0;font-size:1.2rem;opacity:1}
+  #helloMsg.bad{color:#ffb4a8}
+  #helloMsg.ok{color:var(--glow);animation:fi 1.4s ease both}
+  #thanksText{font-size:clamp(1.4rem,6.5vw,1.9rem);margin:1.6rem 0 0;opacity:0}
+  #thanksText.on{animation:fi 2.4s ease both}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+
+<!-- Toothless (simple silhouette, drawn here) -->
+<div id="toothless"><img src="toothless.webp" alt="" draggable="false"></div>
+
+<div class="ui show" id="start">
+  <h1>Something is waiting for you…</h1>
+  <p id="greet">اهلا يا لولووو</p>
+  <input id="hello" type="text" dir="rtl" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="answer">
+  <button id="enter">Let's start</button>
+  <p id="helloMsg"></p>
+</div>
+
+<div class="ui" id="intro"><div id="introLines"></div></div>
+
+<div class="ui" id="welcome"><h1 id="welcomeText"></h1></div>
+
+<div class="ui" id="stars">
+  <div id="field">
+    <svg id="lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+  </div>
+  <div id="starHint">Tap the glowing star ✨</div>
+</div>
+
+<div class="ui" id="message"><div id="msgLines"></div></div>
+<div class="ui" id="finale"><h1 id="finaleText"></h1><p id="thanksText"></p></div>
+
+<div id="card">
+  <div id="panel">
+    <div id="photoBox"></div>
+    <h2 id="cYear"></h2>
+    <div id="cLabel"></div>
+    <p id="cText"></p>
+    <button id="closeBtn">Close</button>
+  </div>
+</div>
+
+<script>
+/* ====== EDIT THESE ====== */
+const WELCOME_TEXT = "Welcome to our world Lolo";
+const INTRO_LINES = [                       // shown one under another
+  "Some friendships are written in the sky…",
+  "like a boy and a dragon who learned to fly together.",
+  "Tonight, it's your turn to see ours."
+];
+const LINE_GAP_MS    = 3000;                // gap between intro lines
+const PAN_STEP       = 0.9;                 // background slide per page (x screen width)
+/* ======================== */
+
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* --- one continuous sky on a canvas: stars wrap around, nebula is a seamless tile --- */
+const sky = $('#sky'), ctx = sky.getContext('2d');
+const SF = [.25, .5, .9], SD = [6, 14, 26], SN = [90, 55, 30];   // pan factor, tilt depth, star count per layer
+let W, H, dpr, tile, TW, starsL = [];
+
+function makeTile(){
+  TW = W * 3;
+  tile = document.createElement('canvas');
+  tile.width = TW * dpr; tile.height = (H + 40) * dpr;
+  const c = tile.getContext('2d'); c.scale(dpr, dpr);
+  const pal = [[110,70,170],[60,130,160],[70,100,190],[50,140,130]];
+  for(let i = 0; i < 10; i++){
+    const col = pal[i % pal.length], x = Math.random() * TW, y = Math.random() * (H + 40);
+    const r = (.45 + Math.random() * .5) * Math.max(W, H), a = .09 + Math.random() * .08;
+    [-TW, 0, TW].forEach(o => {                       // draw 3 copies so the tile wraps seamlessly
+      const g = c.createRadialGradient(x + o, y, 0, x + o, y, r);
+      g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`);
+      c.fillStyle = g; c.fillRect(x + o - r, y - r, r * 2, r * 2);
+    });
+  }
+}
+function build(){
+  dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+  sky.width = W * dpr; sky.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const k = W * H / 330000;
+  starsL = SF.map((f, i) => Array.from({length: Math.round(SN[i] * k)}, () => ({
+    x: Math.random() * W, y: Math.random() * H, r: [.7, 1.1, 1.7][i] * (.6 + Math.random() * .8),
+    a: .4 + Math.random() * .6, s: .6 + Math.random() * 1.6, ph: Math.random() * 6.28})));
+  makeTile();
+}
+let lastW = innerWidth, lastH = innerHeight;
+addEventListener('resize', () => {
+  if(innerWidth !== lastW){ lastW = innerWidth; lastH = innerHeight; build(); }
+});
+build();
+
+function drawSky(t){
+  ctx.clearRect(0, 0, W, H);
+  const ox = -(((pan * .3 + cx * 10) % TW) + TW) % TW, oy = -20 - cy * 8;
+  ctx.drawImage(tile, ox, oy, TW, H + 40);
+  ctx.drawImage(tile, ox + TW, oy, TW, H + 40);
+  starsL.forEach((layer, i) => layer.forEach(s => {
+    const px = (((s.x - pan * SF[i] - cx * SD[i]) % W) + W) % W, py = s.y - cy * SD[i] * .6;
+    const al = s.a * (.3 + .7 * (.5 + .5 * Math.sin(t * s.s + s.ph)));
+    ctx.fillStyle = `rgba(220,240,255,${al.toFixed(2)})`;
+    ctx.beginPath(); ctx.arc(px, py, s.r, 0, 6.283); ctx.fill();
+  }));
+}
+
+/* --- camera: tilt parallax + page-to-page pan to the right --- */
+let tx = 0, ty = 0, cx = 0, cy = 0, pan = 0, panTarget = 0;
+function onTilt(e){
+  if(e.gamma == null) return;
+  tx = Math.max(-1, Math.min(1, e.gamma / 25));
+  ty = Math.max(-1, Math.min(1, (e.beta - 45) / 25));
+}
+addEventListener('pointermove', e => {
+  tx = (e.clientX / innerWidth - .5) * 2;
+  ty = (e.clientY / innerHeight - .5) * 2;
+});
+
+/* --- screens --- */
+function go(from, to){
+  from.classList.remove('show'); from.classList.add('gone');
+  to.classList.remove('gone');   to.classList.add('show');
+  panTarget += innerWidth * PAN_STEP;      // background slides, as if the camera turned right
+}
+
+function frame(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  cx += (tx - cx) * .08; cy += (ty - cy) * .08;
+  pan += (panTarget - pan) * (1 - Math.exp(-dt * 1.6));
+  drawSky(now / 1000);
+  requestAnimationFrame(frame);
+}
+let last = performance.now();
+
+/* --- Toothless flies once: bottom-left -> top-right --- */
+async function flyToothless(){
+  const t = $('#toothless'), W = innerWidth, H = innerHeight;
+  const a = t.animate([
+    {transform:`translate(${-.35*W}px,${1.0*H}px) rotate(-4deg) scale(.7)`, opacity:0, offset:0},
+    {opacity:1, offset:.12},
+    {transform:`translate(${.30*W}px,${.55*H}px) rotate(-8deg) scale(1)`, offset:.5},
+    {transform:`translate(${1.0*W}px,${-.2*H}px) rotate(-6deg) scale(1.2)`, opacity:1, offset:.9},
+    {transform:`translate(${1.15*W}px,${-.3*H}px) rotate(-6deg) scale(1.25)`, opacity:0, offset:1}
+  ], {duration: 5500, easing:'ease-in-out', fill:'forwards'});
+  await a.finished;
+}
+
+/* --- intro sequence --- */
+async function runIntro(){
+  go($('#start'), $('#intro'));
+  await sleep(1200);
+  await flyToothless();
+  const box = $('#introLines');
+  for(let i = 0; i < INTRO_LINES.length; i++){
+    const el = document.createElement('p');
+    el.textContent = INTRO_LINES[i];
+    box.appendChild(el);
+    await sleep(LINE_GAP_MS);
+  }
+  await sleep(2500);
+  $('#welcomeText').textContent = WELCOME_TEXT;
+  go($('#intro'), $('#welcome'));
+  await sleep(5500);
+  go($('#welcome'), $('#stars'));
+}
+
+/* --- first page: she must type the right greeting --- */
+const ANSWERS = ['اهلا يا صاحبتي','اهلا يا صحبتي','اهلا صحبتي','اهلا صاحبتي'];
+const norm = t => t.replace(/[\u064B-\u065F\u0670\u0640\u200B-\u200F\u202A-\u202E]/g, '')   // diacritics, tatweel, hidden marks
+  .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/\s+/g, '').toLowerCase();             // alef/yaa variants, any spaces
+const ANSWERS_N = ANSWERS.map(norm);
+const helloEl = $('#hello'), helloMsg = $('#helloMsg');
+let helloBusy = false;
+
+async function submitHello(){
+  if(helloBusy) return;
+  if(!ANSWERS_N.includes(norm(helloEl.value))){
+    helloMsg.className = 'bad'; helloMsg.textContent = 'غلط يا لولو🤨';
+    helloEl.classList.remove('shake'); void helloEl.offsetWidth; helloEl.classList.add('shake');
+    return;
+  }
+  helloBusy = true;
+  // iPhone motion permission must be requested straight from the tap
+  const perm = (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function')
+    ? DeviceOrientationEvent.requestPermission() : null;
+  helloEl.blur(); helloEl.disabled = true; $('#enter').disabled = true;
+  helloMsg.className = 'ok'; helloMsg.textContent = 'عايزة ايه';
+  try{
+    if(perm){ if(await perm === 'granted') addEventListener('deviceorientation', onTilt); }
+    else addEventListener('deviceorientation', onTilt);
+  }catch(e){}
+  await sleep(2800);
+  runIntro();
+}
+$('#enter').addEventListener('click', submitHello);
+helloEl.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); submitHello(); } });
+helloEl.addEventListener('input', () => { if(helloMsg.className === 'bad'){ helloMsg.textContent = ''; helloMsg.className = ''; } });
+
+
+/* ====== MEMORIES (one star per year) ====== */
+/* photo file for each year: photos/2019.jpg ... photos/2026.jpg */
+const SEQUENTIAL = true;   // true = stars unlock one after another, false = open any star
+const MEMORIES = [
+ {year:2019, label:"٣ اعدادي", x:16, y:20, text:`دي صورة اول يوم دخلت فيه بيتك ف حياتي وحقيقي مكنتش اعرف قد ايه البيت دا هيبقا بيتي التاني 🥹 وبفتكر كل لحظة بينا سوا ف اوائل الطلبة وكل ذكرى لينا مع بداية تعارفنا على بعض  وقد ايه انتي حسستيني بحاجات عمري ما كنت اتخيل اني احسها ف حياتي`},
+ {year:2020, label:"اولى ثانوي", x:42, y:10, text:`طبعا السنة دي ف بدايتها كانت مش اللطف حاجة ف علاقتنا بس قد ايه بردو نفس السنة دي الي اتنقلت فيها علاقتنا تماما من مجرد صحاب لقوا بعض ل اخوات منقدرش نتفرق عن بعض 
+ربنا اداني اخت ٣ ليا 💗`},
+ {year:2021, label:"تانية ثانوي", x:70, y:22, text:`انا حقيقي بعتير السنة دي ف بدايتها هي اجمل ايام علاقتنا يعني ٢ ثانوي كلها وطبعا عمري ما انسا ان السنة دي كانت اول مرة اخرج معاكي اخر يوم امتحانات يا لولو 
+قد ايه كنا مبسوطططيين اوي انا وانتي وما صدقت خلصت من الشلة المستفزة التانية وكش هبالغ لو قولت اني كنت اول مرة اخرج خروجة مع صحابي واحس اني انا بالشكل دا 
+وكله بفضلك انتي يا لولو انتي الي اخدتيني ودخلتيني فالعالم بتاعك بكل حاجة حلوة فيه`},
+ {year:2022, label:"٣ ثانوي", x:83, y:42, text:`طبعا ذكريات ثانوية عامة المريرة وكل تجربة قضيناها سوا مع بعض وعمري ما انسا احساسنا واحنا خلاص داخلين الجامعة سوا ونازلين نشتري لبس وميكب فاكرة اليوم الي نزلنا اشترينا فيه ميكب من سمير ويليام الي جبنا منه الروج الي لحد دلوقتي بنتسخدمه ك بلاشر 🥹💗`},
+ {year:2023, label:"اولى جامعة", x:58, y:50, text:`احلى عيد ميلاد عدا عليا ف حياتي واحلى مفاجأة ف حياتي 💗💗 
+سنة اولى دي كنت بحس اني طفل صغير لازم يروح يحكي لمامته كل حاجة حصلت وكل حد قاله ايه وعمله ايه 
+مش اولى جامعة بس بصراحة لحد دلوقتي انا كدة 🤓`},
+ {year:2024, label:"تانية جامعة", x:30, y:58, text:`اول سفرية لينا سوا 💗 
+احلى سفرية سافرتها ف حياتي مع انك هتقولي ان احلى سفرية سافرتيها دهب 🤨 بس اوكاي هعديهالك 
+ذكريات السفرية دي عمرييي ف حياتي ما هنساها ابداااااااا`},
+ {year:2025, label:"تالتة جامعة", x:20, y:78, text:`فرح احمد واول مرة تحضري مناسبة مع عيلتي 
+رغم اني دايييمممااا بحس انك اصلا موجودة ف كل المناسبات كان بس الناقص حضورك جسديا `},
+ {year:2026, label:"رابعة جامعة وتخرجي", x:60, y:82, big:true, text:`ياريتك كنتي موجودة معايا فالحفلة يا لولو 🥺 بس مش مشكلة حفلتك اي حفلتي نعوضها ف حفلتك 
+مش هقدر اقول كم المرات السنة الي دي الي روحتلك فيها ببال مشغول وبحكي حاجة شغلاني اويييي وانتي بتسمعيها عادي وانا عارفة ان مش ممكن حد يسمعها غيرك`}
+];
+
+const field = $('#field'), linesSvg = $('#lines'), card = $('#card');
+let opened = 0, current = -1;
+const starEls = [], lineEls = [];
+const STAR_SVG = '<svg viewBox="-10 -10 20 20"><path d="M0-10L2.2-2.2L10 0L2.2 2.2L0 10L-2.2 2.2L-10 0L-2.2-2.2Z"/></svg>';
+
+MEMORIES.forEach((m, i) => {
+  if(i > 0){
+    const a = MEMORIES[i-1], ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ln.setAttribute('x1', a.x); ln.setAttribute('y1', a.y); ln.setAttribute('x2', m.x); ln.setAttribute('y2', m.y);
+    ln.setAttribute('class', 'ln'); linesSvg.appendChild(ln); lineEls[i] = ln;
+  }
+  const b = document.createElement('button');
+  b.className = 'star' + (m.big ? ' big' : '');
+  b.style.left = m.x + '%'; b.style.top = m.y + '%';
+  b.innerHTML = STAR_SVG + '<b>' + m.year + '</b>';
+  b.addEventListener('click', () => onStar(i));
+  field.appendChild(b); starEls[i] = b;
+});
+
+function refreshStars(){
+  starEls.forEach((b, i) => {
+    b.classList.toggle('lit', i < opened);
+    b.classList.toggle('next', SEQUENTIAL ? i === opened : i >= opened);
+    if(SEQUENTIAL && i > opened) b.style.opacity = '.3'; else b.style.opacity = '';
+  });
+  lineEls.forEach((ln, i) => ln && ln.classList.toggle('on', i < opened));
+}
+refreshStars();
+
+function onStar(i){
+  if(SEQUENTIAL && i > opened){
+    const b = starEls[i]; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return;
+  }
+  current = i;
+  const m = MEMORIES[i], box = $('#photoBox');
+  box.innerHTML = '';
+  const img = new Image();
+  img.alt = '';
+  const exts = ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP']; let k = 0;   // tries each extension
+  img.onerror = () => {
+    k++;
+    if(k < exts.length) img.src = 'photos/' + m.year + '.' + exts[k];
+    else box.textContent = 'photos/' + m.year + '.jpg';
+  };
+  img.src = 'photos/' + m.year + '.' + exts[0];
+  box.appendChild(img);
+  $('#cYear').textContent = m.year;
+  $('#cLabel').textContent = m.label;
+  $('#cText').textContent = m.text.trim();
+  $('#panel').scrollTop = 0;
+  card.classList.add('open');
+  $('#starHint').style.opacity = 0;
+}
+function closeCard(){
+  if(!card.classList.contains('open')) return;
+  card.classList.remove('open');
+  if(SEQUENTIAL ? current === opened : current >= opened){ opened = Math.max(opened, current + 1); }
+  panTarget += innerWidth * .2;         // the sky drifts a little as we move to the next star
+  refreshStars();
+  seen.add(current);
+  if(seen.size === MEMORIES.length) runFinale();
+}
+$('#closeBtn').addEventListener('click', closeCard);
+card.addEventListener('click', e => { if(e.target === card) closeCard(); });
+
+
+/* ====== ENDING: after all stars are opened ====== */
+const FINAL_MESSAGE = [
+  `خليتيني ابطل احس اني غريبة ف اي مكان وساعدتيني افهم نفسي واشوف الي جواها`,
+  `وانا بقلب فالجاليري في ذكريات كتير ليا مع عيلتي وفالجامعة وذكريات انتي مكنتيش فيها بس حقيقي كل ذكرى جوايا انتي حاضرة فيها اكتر من اي حد كان موجود`,
+  `كل لحظة وانا متحمسة اليوم يخلص علشان اروح احكي ل لولو كل الي حصل واوريها الصور`,
+  `كل موقف وانا مستنية اروح اعيط ل ولولو`,
+  `وكل مرة ببقا نفسي اطلع الموبايل واصور من كتر منا عايزاكي تبقي معايا فالموقف دا`
+];
+const FINAL_TEXT = "You're my Toothless💗";
+const msgGap = t => Math.max(3000, 1800 + t.length * 40);   // 3s minimum, longer lines stay a bit longer so she can read
+
+const seen = new Set();
+let finaleStarted = false;
+async function runFinale(){
+  if(finaleStarted) return; finaleStarted = true;
+  await sleep(2200);
+  go($('#stars'), $('#message'));              // sky slides right by itself
+  await sleep(2600);
+  const box = $('#msgLines');
+  for(const t of FINAL_MESSAGE){
+    const el = document.createElement('p');
+    el.textContent = t;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+    await sleep(msgGap(t));
+  }
+  await sleep(3500);
+  $('#finaleText').textContent = FINAL_TEXT;
+  go($('#message'), $('#finale'));
+  await sleep(3500);
+  $('#thanksText').textContent = 'شكرا لولو 💗';
+  $('#thanksText').classList.add('on');
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
